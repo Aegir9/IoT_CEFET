@@ -1,1 +1,1 @@
-# IoT_CEFET
+# IoT - Internet das Coisas - CEFET/RJ
