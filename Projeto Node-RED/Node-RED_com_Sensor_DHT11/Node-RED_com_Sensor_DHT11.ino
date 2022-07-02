@@ -47,6 +47,7 @@ int BROKER_PORT = 1883;                         // Porta do Broker MQTT
 WiFiClient espClient;         // Cria o objeto espClient
 PubSubClient MQTT(espClient); // Instancia o Cliente MQTT passando o objeto espClient
 int ultimoEnvioMQTT = 0;
+int segundos = 3; // Tempo de atualização das informações do sensor em segundos. 
 
 // Protótipos de Função
 void initSerial();
@@ -76,19 +77,18 @@ void loop()
     ArduinoOTA.handle();    // keep-alive da comunicação OTA
     VerificaConexoesMQTT(); // garante funcionamento da conexão com o broker MQTT.
 
-    int segundos = 10;
-    envioMQTTPorTempo(segundos * 1000); 
+    envioMQTTPorTempo(segundos) ; 
 
     MQTT.loop(); // keep-alive da comunicação com broker MQTT
 }
 
 // Função: chama as funções definidas internamente a cada X segundos, definidos via parâmetro.
-// Parâmetros: (int) intervalo em milissegundos para o envio das mensagens
+// Parâmetros: (int) intervalo em segundos para o envio das mensagens
 // Retorno: nenhum
-void envioMQTTPorTempo(int intervaloEnvioMS)
+void envioMQTTPorTempo(int intervaloEnvioSegundos)
 {
     // envia a cada X segundos
-    if ((millis() - ultimoEnvioMQTT) > intervaloEnvioMS)
+    if ((millis() - ultimoEnvioMQTT) > (intervaloEnvioSegundos * 1000))
     {
         enviaDHT();
         ultimoEnvioMQTT = millis();
@@ -196,16 +196,14 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 
     Serial.println("msg = " + msg);
 
-    if (msg.equals("ON")) // liga led
+    if (msg.equals("OFF"))// Desliga o led. 
     {
-        digitalWrite(LED_BUILTIN, LOW);
         digitalWrite(D1, LOW);
         Serial.println("Ligado led");
     }
 
-    if (msg.equals("OFF"))
+    if (msg.equals("ON"))// Liga o led.
     {
-        digitalWrite(LED_BUILTIN, HIGH);
         digitalWrite(D1, HIGH);
         Serial.println("Desligado led");
     }
@@ -253,12 +251,10 @@ void VerificaConexoesMQTT()
 // Retorno: nenhum
 void initOutput()
 {
-    // enviar HIGH para o output faz o Led acender / enviar LOW faz o Led apagar)
-
+    // Enviar HIGH para o output faz o Led acender / enviar LOW faz o Led apagar).
+    // LEDs iniciam apagados.
     pinMode(D1, OUTPUT);
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH);
-    digitalWrite(D1, HIGH);
+    digitalWrite(D1, LOW);
 }
 // Função: realiza a leitura de umidade e temperatura do sensor DHT e publica
 //         os resultados no tópico MQTT definido.
@@ -284,9 +280,9 @@ void enviaDHT()
         Serial.print(temperatura);
         Serial.println(" °C");
 
-        sprintf(MsgUmidadeMQTT, "%f", umidade);
+        sprintf(MsgUmidadeMQTT, "%.2f", umidade);
         MQTT.publish(TOPICO_PUBLISH_DHT_UMIDADE, MsgUmidadeMQTT);
-        sprintf(MsgTemperaturaMQTT, "%f", temperatura);
+        sprintf(MsgTemperaturaMQTT, "%.2f", temperatura);
         MQTT.publish(TOPICO_PUBLISH_DHT_TEMPERATURA, MsgTemperaturaMQTT);
     }
 }
