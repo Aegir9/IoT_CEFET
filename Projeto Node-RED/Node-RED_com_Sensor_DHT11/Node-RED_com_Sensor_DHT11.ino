@@ -47,7 +47,7 @@ int BROKER_PORT = 1883;                         // Porta do Broker MQTT
 WiFiClient espClient;         // Cria o objeto espClient
 PubSubClient MQTT(espClient); // Instancia o Cliente MQTT passando o objeto espClient
 int ultimoEnvioMQTT = 0;
-int segundos = 3; // Tempo de atualização das informações do sensor em segundos. 
+int segundos = 10; // Tempo de atualização das informações do sensor em segundos. 
 
 // Protótipos de Função
 void initSerial();
@@ -80,19 +80,6 @@ void loop()
     envioMQTTPorTempo(segundos) ; 
 
     MQTT.loop(); // keep-alive da comunicação com broker MQTT
-}
-
-// Função: chama as funções definidas internamente a cada X segundos, definidos via parâmetro.
-// Parâmetros: (int) intervalo em segundos para o envio das mensagens
-// Retorno: nenhum
-void envioMQTTPorTempo(int intervaloEnvioSegundos)
-{
-    // envia a cada X segundos
-    if ((millis() - ultimoEnvioMQTT) > (intervaloEnvioSegundos * 1000))
-    {
-        enviaDHT();
-        ultimoEnvioMQTT = millis();
-    }
 }
 
 // Função: inicializa comunicação serial com baudrate 115200 (para fins de monitorar no terminal serial
@@ -199,13 +186,13 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     if (msg.equals("OFF"))// Desliga o led. 
     {
         digitalWrite(D1, LOW);
-        Serial.println("Ligado led");
+        Serial.println("LED Desligado");
     }
 
     if (msg.equals("ON"))// Liga o led.
     {
         digitalWrite(D1, HIGH);
-        Serial.println("Desligado led");
+        Serial.println("LED Ligado");
     }
 }
 
@@ -284,5 +271,18 @@ void enviaDHT()
         MQTT.publish(TOPICO_PUBLISH_DHT_UMIDADE, MsgUmidadeMQTT);
         sprintf(MsgTemperaturaMQTT, "%.2f", temperatura);
         MQTT.publish(TOPICO_PUBLISH_DHT_TEMPERATURA, MsgTemperaturaMQTT);
+    }
+}
+
+// Função: chama as funções definidas internamente a cada X segundos, definidos via parâmetro.
+// Parâmetros: (int) intervalo em segundos para o envio das mensagens
+// Retorno: nenhum
+void envioMQTTPorTempo(int intervaloEnvioSegundos)
+{
+    // envia a cada X segundos
+    if ((millis() - ultimoEnvioMQTT) > (intervaloEnvioSegundos * 1000))
+    {
+        enviaDHT();
+        ultimoEnvioMQTT = millis();
     }
 }
