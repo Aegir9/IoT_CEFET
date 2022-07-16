@@ -40,7 +40,7 @@ const char *PASSWORD_OTA = "25696969";  // Senha de acesso a Porta de Rede OTA
 #define USER_MQTT "" // usuario no MQTT
 #define PASS_MQTT "" // senha no MQTT
 
-const char *BROKER_MQTT = "broker.hivemq.com"; //"broker.hivemq.com"; // URL do broker MQTT que se deseja utilizar
+const char *BROKER_MQTT = "broker.hivemq.com"; //"test.mosquitto.org"; // URL do broker MQTT que se deseja utilizar
 int BROKER_PORT = 1883;                         // Porta do Broker MQTT
 
 // Variáveis e objetos globais
