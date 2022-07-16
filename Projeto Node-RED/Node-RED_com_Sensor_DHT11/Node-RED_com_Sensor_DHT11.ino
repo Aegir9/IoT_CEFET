@@ -21,7 +21,7 @@
 DHT dht(D4, DHTTYPE);
 
 // WIFI
-const char *myHostname = "ESP8266_MDS"; // Nome do host na rede e do OTA
+const char *myHostname = "ESP8266_NodeRED"; // Nome do host na rede e do OTA
 const char *SSID = "ESP_MDS_AP";        // SSID / nome da rede WI-FI (AP) do WiFiManager
 const char *PASSWORD_AP = "12121215";   // Senha da rede WI-FI (AP) do WiFiManager
 const char *PASSWORD_OTA = "25696969";  // Senha de acesso a Porta de Rede OTA
@@ -31,7 +31,7 @@ const char *PASSWORD_OTA = "25696969";  // Senha de acesso a Porta de Rede OTA
 #define TOPICO_PUBLISH_DHT_UMIDADE "TarefaNodeRed/umidade"         // tópico MQTT de publicar umidade
 #define TOPICO_PUBLISH_DHT_TEMPERATURA "TarefaNodeRed/temperatura" // tópico MQTT de publicar temperatura
 
-#define ID_MQTT "ESPMDS-26" // id mqtt (para identificação de sessão)
+#define ID_MQTT "ESPNodeRed-2465486" // id mqtt (para identificação de sessão)
                             // IMPORTANTE: este deve ser único no broker (ou seja,
                             //            se um client MQTT tentar entrar com o mesmo
                             //            id de outro já conectado ao broker, o broker
@@ -40,14 +40,15 @@ const char *PASSWORD_OTA = "25696969";  // Senha de acesso a Porta de Rede OTA
 #define USER_MQTT "" // usuario no MQTT
 #define PASS_MQTT "" // senha no MQTT
 
-const char *BROKER_MQTT = "test.mosquitto.org"; // URL do broker MQTT que se deseja utilizar
+const char *BROKER_MQTT = "broker.hivemq.com"; //"broker.hivemq.com"; // URL do broker MQTT que se deseja utilizar
 int BROKER_PORT = 1883;                         // Porta do Broker MQTT
 
 // Variáveis e objetos globais
 WiFiClient espClient;         // Cria o objeto espClient
 PubSubClient MQTT(espClient); // Instancia o Cliente MQTT passando o objeto espClient
 int ultimoEnvioMQTT = 0;
-int segundos = 10; // Tempo de atualização das informações do sensor em segundos. 
+int ultimaReconexaoMQTT = 0;
+int atualizacaoEmSegundos = 2; // Tempo de atualização das informações do sensor em segundos. 
 
 // Protótipos de Função
 void initSerial();
@@ -76,9 +77,7 @@ void loop()
 {
     ArduinoOTA.handle();    // keep-alive da comunicação OTA
     VerificaConexoesMQTT(); // garante funcionamento da conexão com o broker MQTT.
-
-    envioMQTTPorTempo(segundos) ; 
-
+    envioMQTTPorTempo(atualizacaoEmSegundos); 
     MQTT.loop(); // keep-alive da comunicação com broker MQTT
 }
 
@@ -202,24 +201,27 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 // Retorno: nenhum
 void reconnectMQTT()
 {
-    while (!MQTT.connected())
+    int intevaloDeReconexao = 2;
+    if (!MQTT.connected() && (millis() - ultimaReconexaoMQTT) > (intevaloDeReconexao * 1000))
     {
-        Serial.print("* Tentando se conectar ao Broker MQTT: ");
-        Serial.println(BROKER_MQTT);
-        // if (MQTT.connect(ID_MQTT, USER_MQTT,PASS_MQTT))      // Parameros usados para broker proprietário
-                                                                // ID do MQTT, login do usuário, senha do usuário
-
-        if (MQTT.connect(ID_MQTT))
-        {
-            Serial.println("Conectado com sucesso ao broker MQTT!");
-            MQTT.subscribe(TOPICO_SUBSCRIBE_LED1);
-        }
-        else
-        {
-            Serial.println("Falha ao reconectar no broker.");
-            Serial.println("Havera nova tentatica de conexao em 2s");
-            delay(2000);
-        }
+          Serial.println();
+          Serial.print("* Tentando se conectar ao Broker MQTT: ");
+          Serial.println(BROKER_MQTT);
+          // if (MQTT.connect(ID_MQTT, USER_MQTT,PASS_MQTT))      // Parameros usados para broker proprietário
+                                                                  // ID do MQTT, login do usuário, senha do usuário
+  
+          if (MQTT.connect(ID_MQTT))
+          {
+              Serial.println("Conectado com sucesso ao broker MQTT!");
+              MQTT.subscribe(TOPICO_SUBSCRIBE_LED1);
+          }
+          else
+          {
+              Serial.println("Falha ao reconectar no broker.");
+              Serial.printf("Haverá uma nova tentativa de conexão em %ds", intevaloDeReconexao);
+              Serial.println();
+          }
+          ultimaReconexaoMQTT = millis();
     }
 }
 
@@ -279,8 +281,8 @@ void enviaDHT()
 // Retorno: nenhum
 void envioMQTTPorTempo(int intervaloEnvioSegundos)
 {
-    // envia a cada X segundos
-    if ((millis() - ultimoEnvioMQTT) > (intervaloEnvioSegundos * 1000))
+    // Envia a cada X segundos caso o MQTT estiver conectado.
+    if (MQTT.connected() && (millis() - ultimoEnvioMQTT) > (intervaloEnvioSegundos * 1000))
     {
         enviaDHT();
         ultimoEnvioMQTT = millis();
